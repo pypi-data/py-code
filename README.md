@@ -96,3 +96,7 @@ data/               scan results and lists; generated and not committed
 `scanner/history/` holds the first run's project list, which came from ClickHouse's
 `pypi.projects` table. That table turned out to miss about 150,000 projects released in the last
 year, so `project_list.py` replaced it.
+
+## Licence
+
+MIT. See `LICENSE`.
