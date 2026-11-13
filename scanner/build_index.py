@@ -3,6 +3,9 @@
 Usage:
   python3 scanner/build_index.py data/projects dist/api [--downloads data/downloads.tsv ...] [--since YYYY-MM-DD]
 
+A project is indexed if its latest release is on or after --since, or if it is in the downloads
+file (the most downloaded projects), so popular but stable packages such as six stay in.
+
 Stage 1 streams every data/projects/<name>.json once and writes flat NDJSON files
 (one row per project x referenced name). Stage 2 aggregates them in DuckDB, which spills
 to disk instead of holding everything in memory. Stage 3 streams the sorted result into
@@ -104,6 +107,11 @@ def load_downloads(files):
     return dl
 
 
+def in_scope(d, since, downloads):
+    """Latest release on or after `since`, or one of the most downloaded projects."""
+    return not since or (d.get("upload_time") or "") >= since or downloads.get(norm(d["name"]), 0) > 0
+
+
 def unique_files(src):
     """One scan file per normalized project name. Older runs saved some projects under two
     spellings (ab-engine.json and ab_engine.json); keep the one with the newest upload."""
@@ -140,8 +148,8 @@ def stage1(src, tmp, downloads, since=""):
         except ValueError:
             n_err += 1
             continue
-        if "skipped" in d or (since and "error" not in d and (d.get("upload_time") or "") < since):
-            continue  # latest release is outside the date window
+        if "skipped" in d or (since and "error" not in d and not in_scope(d, since, downloads)):
+            continue  # latest release is outside the date window and the project is not popular
         if "error" in d:
             n_err += 1
             continue
@@ -303,7 +311,8 @@ def stage5(con, out, n_ok, n_err, totals, big, t0):
     dump(out / "status.json", {"built": built, "projects_indexed": n_ok,
                                "since": totals["since"],
                                "scope": f"{n_ok:,} PyPI projects (latest release"
-                                        + (f", released since {totals['since']})" if totals["since"] else ")")})
+                                        + (f"; released since {totals['since']}, or among the most downloaded)"
+                                           if totals["since"] else ")")})
     dump(out / "manifest.json", {"idx_shards": IDX_SHARDS, "project_shards": PROJECT_SHARDS,
                                  "big": big, "row_cap": ROW_CAP, "built": built,
                                  "build_seconds": round(time.time() - t0)})
@@ -314,7 +323,8 @@ def main():
     ap.add_argument("src")
     ap.add_argument("out")
     ap.add_argument("--downloads", nargs="*", default=["data/downloads.tsv"])
-    ap.add_argument("--since", default="", help="leave out projects whose latest release is older (YYYY-MM-DD)")
+    ap.add_argument("--since", default="", help="leave out projects whose latest release is older (YYYY-MM-DD), "
+                    "unless they are in the downloads file")
     ap.add_argument("--memory", default="8GB")
     a = ap.parse_args()
     src, out = Path(a.src), Path(a.out)

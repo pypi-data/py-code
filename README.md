@@ -1,7 +1,7 @@
 # py-code.org
 
 A "who uses this?" search over the code inside PyPI packages. For the latest release of every
-project released in the last year, the scanner records which modules, functions and classes the
+project released in the last year, and of the 60,000 most downloaded projects, the scanner records which modules, functions and classes the
 code imports and calls. The output is static JSON, so it can be hosted for free.
 
 This repo holds the scanner. The pages of py-code.org live in a separate repo and read this
@@ -54,11 +54,11 @@ Monthly refresh: `scanner/build.sh refresh` lists the projects that changed in t
 re-scans them, and rebuilds the index. Projects whose latest release is older than the window
 (`DAYS`, default 365) are left out of the index.
 
-Export the scan results as Parquet tables for bulk download and SQL (`dist/parquet/`, about
+Export the scan results as Parquet tables for bulk download and SQL (`data/parquet/`, about
 790 MB with zstd):
 
 ```sh
-python3 scanner/export_parquet.py data/projects dist/parquet --downloads data/downloads.tsv --since 2025-11-13
+python3 scanner/export_parquet.py data/projects data/parquet --downloads data/downloads.tsv --since 2025-11-13
 ```
 
 ### How each step works
@@ -94,6 +94,14 @@ hours: 5,157 had no release in the window and 3,693 failed. After both runs:
   the window), 12.4 million Python files parsed, 4.16 million distinct names.
 - 73 GB downloaded in total, against 447 GB for the full files.
 - Index build: 290 seconds, 2.4 GB.
+
+Long-stable packages such as six and PyYAML had no release in the window, so they were missing.
+A third run scanned the 18,737 projects among the 60,000 most downloaded that had no result yet,
+in 32 minutes with 138 errors. With them:
+
+- 354,763 projects indexed, 12.9 million Python files parsed.
+- 77 GB downloaded in total, against 471 GB for the full files.
+- Index build: 279 seconds, 17,564 files, 2.5 GB.
 
 ## Known limits
 

@@ -44,7 +44,7 @@ def project_imports(index: Index, name):
     p = index.project(name.strip())
     if not p:
         raise NotFound(
-            f"{name} is not in the index. It covers the latest release of PyPI projects released in the last year."
+            f"{name} is not in the index. It covers the latest release of PyPI projects released in the last year, plus the most downloaded projects."
         )
     return {
         "project": p["name"],

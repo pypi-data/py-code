@@ -6,7 +6,9 @@ For each project: pick one distribution file of the latest non-yanked release, f
 .py (and .pth) files, parse them with ast, and write data/projects/<name>.json.
 Already-scanned projects are skipped, so the scan can be resumed. --force re-scans every listed
 project (for a monthly refresh, list only the projects that changed). With --since, a project whose
-latest release is older is saved as {"skipped": ...} and left out of the index.
+latest release is older is saved as {"skipped": ...} and left out of the index. --rescan-skipped
+also re-scans listed projects whose saved result is skipped or an error (used, without --since,
+for the most downloaded projects).
 """
 
 import ast
@@ -297,6 +299,7 @@ def main():
     ap.add_argument("--limit", type=int)
     ap.add_argument("--since", default=SINCE)
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--rescan-skipped", action="store_true")
     a = ap.parse_args()
     SINCE = a.since
     src, out = Path(a.src), Path(a.out)
@@ -308,7 +311,19 @@ def main():
     removed = {canonical(l.split("#", 1)[0].strip()) for l in removed_file.read_text().splitlines()
                if l.split("#", 1)[0].strip()} if removed_file.exists() else set()
     names = [n for n in names if n not in removed]  # authors asked to be left out
-    todo = names if a.force else [n for n in names if not (out / f"{n}.json").exists()]
+    def usable(n):
+        f = out / f"{n}.json"
+        if not f.exists():
+            return False
+        if not a.rescan_skipped:
+            return True
+        try:
+            d = json.loads(f.read_text())
+        except ValueError:
+            return False
+        return "skipped" not in d and "error" not in d
+
+    todo = names if a.force else [n for n in names if not usable(n)]
     print(f"{len(names)} projects, {len(todo)} to scan", flush=True)
     t0, done, errs, skipped = time.time(), 0, 0, 0
     with ThreadPoolExecutor(WORKERS) as ex:

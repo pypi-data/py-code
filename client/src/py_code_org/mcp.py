@@ -13,7 +13,7 @@ PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]
 
 INSTRUCTIONS = (
     "py-code.org indexes the code inside the latest release of every PyPI project released in the last "
-    "year (about 335,000 projects) and records which modules, functions and classes each one imports or "
+    "year, plus the most downloaded projects (about 354,000 in all), and records which modules, functions and classes each one imports or "
     "reaches by attribute. Use who_uses before changing or removing a public name in a library, to see "
     "which packages call it and where. Names are case-sensitive and fully qualified as imported, e.g. "
     "requests.Session or numpy.linalg.norm. If a name is not found, use module_names to find the exact spelling."
