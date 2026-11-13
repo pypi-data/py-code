@@ -82,7 +82,7 @@ def main():
                         "'py_failed':'INTEGER','downloads_30d':'BIGINT'}",
             "refs": "{'project':'VARCHAR','name':'VARCHAR','module':'VARCHAR','files':'INTEGER','locations':'VARCHAR[]'}",
             "own_modules": "{'project':'VARCHAR','module':'VARCHAR'}",
-            "pth_files": "{'project':'VARCHAR','pth':'JSON'}",
+            "pth_files": "{'project':'VARCHAR','pth':'VARCHAR'}",
         }
         for k in fh:
             path = out / f"{k}.parquet"
