@@ -1,0 +1,109 @@
+# Monthly refresh: re-scan the projects that changed, rebuild the index, deploy it to
+# data.py-code.org and publish the new Parquet tables to Hugging Face.
+#
+# The runner starts with no scan results, so the first step rebuilds them from the Parquet
+# tables on Hugging Face (scanner/parquet_to_projects.py).
+#
+# Each published run commits index-status.json, which also stops GitHub from disabling the
+# schedule after 60 days without commits.
+#
+# Secrets: CLOUDFLARE_API_TOKEN (Pages: Edit), CLOUDFLARE_ACCOUNT_ID, HF_TOKEN (write to pypi-data).
+name: monthly refresh
+
+on:
+  schedule:
+    - cron: "0 3 2 * *"  # 03:00 UTC on the 2nd of each month
+  workflow_dispatch:
+    inputs:
+      changed_days:
+        description: "Re-scan projects that changed in this many days"
+        default: "35"
+      publish:
+        description: "Deploy the index and upload to Hugging Face"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write  # the last step commits index-status.json
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    env:
+      DAYS: "365"
+      CHANGED_DAYS: ${{ inputs.changed_days || '35' }}
+      PUBLISH: ${{ github.event_name == 'schedule' || inputs.publish }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install
+        run: python -m pip install -r requirements.txt "huggingface_hub[cli]"
+
+      - name: Rebuild the scan results from the published Parquet tables
+        run: |
+          hf download pypi-data/py-code --repo-type dataset --local-dir data/hf --include "*.parquet"
+          python scanner/parquet_to_projects.py data/hf data/projects
+          rm -rf data/hf
+          df -h /
+
+      - name: Re-scan changed projects and rebuild the index
+        run: scanner/build.sh refresh
+
+      - name: Deploy data.py-code.org
+        if: env.PUBLISH == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: scanner/deploy_data.sh
+
+      - name: Export the Parquet tables
+        run: |
+          since=$(date -u -d "-$DAYS days" +%F)
+          python scanner/export_parquet.py data/projects data/parquet --downloads data/downloads.tsv --since "$since"
+          python scanner/dataset_card.py data/parquet --since "$since"
+
+      - name: Upload to Hugging Face
+        if: env.PUBLISH == 'true'
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          hf upload pypi-data/py-code data/parquet . --repo-type dataset \
+            --commit-message "Monthly refresh $(date -u +%F)"
+
+      # Commits the new index status to the repository. Besides recording each build, the commit
+      # keeps the schedule alive: GitHub turns off scheduled workflows after 60 days with no commits.
+      - name: Record the build
+        if: env.PUBLISH == 'true'
+        run: |
+          cp dist/api/status.json index-status.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index-status.json
+          git commit -m "Index refresh $(date -u +%F)" || git commit --allow-empty -m "Index refresh $(date -u +%F)"
+          git push
+
+      - name: Keep the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: data/*.log
+          retention-days: 30

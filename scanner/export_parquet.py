@@ -1,13 +1,15 @@
 """Export the scan results as Parquet tables for bulk download and SQL.
 
 Usage:
-  python3 scanner/export_parquet.py data/projects dist/parquet [--downloads data/downloads.tsv ...] [--since YYYY-MM-DD]
+  python3 scanner/export_parquet.py data/projects data/parquet [--downloads data/downloads.tsv ...] [--since YYYY-MM-DD]
 
 Uses the same projects as build_index.py: one scan file per normalized name, no errors,
-latest release on or after --since, and nothing listed in scanner/removed.txt.
+latest release on or after --since or among the most downloaded, and nothing listed in
+scanner/removed.txt.
 
 Tables (zstd-compressed Parquet):
   projects.parquet     one row per project: release, Python floor, file counts, 30-day downloads
+                       (scanner/parquet_to_projects.py turns these tables back into scan results)
   refs.parquet         one row per (project, name): every module, function or class the code
                        imports or reaches by attribute, with the number of files and the first locations
   own_modules.parquet  one row per (project, top-level module the project provides)
@@ -21,7 +23,7 @@ from pathlib import Path
 
 import duckdb
 
-from build_index import load_downloads, load_removed, norm, unique_files
+from build_index import in_scope, load_downloads, load_removed, norm, unique_files
 
 
 def main():
@@ -51,14 +53,14 @@ def main():
                 continue
             if "skipped" in d or "error" in d:
                 continue
-            if a.since and (d.get("upload_time") or "") < a.since:
+            if not in_scope(d, a.since, downloads):
                 continue
             n += 1
             name = d["name"]
             fh["projects"].write(json.dumps({
                 "project": name, "version": d["version"], "upload_time": d.get("upload_time"),
                 "requires_python": d.get("requires_python"), "summary": (d.get("summary") or "")[:300],
-                "file": d.get("file"), "file_size": d.get("file_size"),
+                "file": d.get("file"), "file_size": d.get("file_size"), "bytes_fetched": d.get("bytes_fetched"),
                 "py_files": d["py_files"], "py_failed": d["py_failed"],
                 "downloads_30d": downloads.get(norm(name), 0)}) + "\n")
             for ref, (files, ex) in d["refs"].items():
@@ -78,7 +80,7 @@ def main():
                  "pth_files": "project"}
         types = {
             "projects": "{'project':'VARCHAR','version':'VARCHAR','upload_time':'TIMESTAMP','requires_python':'VARCHAR',"
-                        "'summary':'VARCHAR','file':'VARCHAR','file_size':'BIGINT','py_files':'INTEGER',"
+                        "'summary':'VARCHAR','file':'VARCHAR','file_size':'BIGINT','bytes_fetched':'BIGINT','py_files':'INTEGER',"
                         "'py_failed':'INTEGER','downloads_30d':'BIGINT'}",
             "refs": "{'project':'VARCHAR','name':'VARCHAR','module':'VARCHAR','files':'INTEGER','locations':'VARCHAR[]'}",
             "own_modules": "{'project':'VARCHAR','module':'VARCHAR'}",
