@@ -304,6 +304,10 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     names = [l.split("\t")[0] for l in src.read_text().splitlines() if l.strip()][:limit]
     names = list(dict.fromkeys(canonical(n) for n in names))
+    removed_file = Path(__file__).with_name("removed.txt")
+    removed = {canonical(l.split("#", 1)[0].strip()) for l in removed_file.read_text().splitlines()
+               if l.split("#", 1)[0].strip()} if removed_file.exists() else set()
+    names = [n for n in names if n not in removed]  # authors asked to be left out
     todo = names if a.force else [n for n in names if not (out / f"{n}.json").exists()]
     print(f"{len(names)} projects, {len(todo)} to scan", flush=True)
     t0, done, errs, skipped = time.time(), 0, 0, 0

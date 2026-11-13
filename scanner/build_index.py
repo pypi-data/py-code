@@ -86,6 +86,13 @@ def dump(path, obj):
     path.write_text(json.dumps(obj, separators=(",", ":")))
 
 
+def load_removed():
+    """Projects whose authors asked to be left out (scanner/removed.txt)."""
+    f = Path(__file__).with_name("removed.txt")
+    lines = f.read_text().splitlines() if f.exists() else []
+    return {norm(l.split("#", 1)[0].strip()) for l in lines if l.split("#", 1)[0].strip()}
+
+
 def load_downloads(files):
     dl = {}
     for f in files:
@@ -124,7 +131,10 @@ def stage1(src, tmp, downloads, since=""):
     n_ok = n_err = 0
     totals = {"py_files": 0, "py_failed": 0, "bytes_fetched": 0, "bytes_full_files": 0}
     pth = []
+    removed = load_removed()
     for f in unique_files(src):
+        if norm(f.stem) in removed:
+            continue
         try:
             d = json.loads(f.read_text())
         except ValueError:

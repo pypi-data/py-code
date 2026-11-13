@@ -1,0 +1,3 @@
+# Projects left out of py-code.org at their authors' request.
+# One project name per line. scan.py does not download them and build_index.py
+# leaves them out of the index. Add the date and a short reason as a comment.

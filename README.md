@@ -87,6 +87,7 @@ hours: 5,157 had no release in the window and 3,693 failed. After both runs:
 
 ```
 scanner/            the pipeline above
+scanner/removed.txt projects left out at their authors' request (skipped by scan.py and build_index.py)
 scanner/history/    one-off scripts from the first run, kept for the build-log articles
 dist/               the search data (api/ plus _headers); generated and not committed
 data/               scan results and lists; generated and not committed
