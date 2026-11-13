@@ -1,4 +1,4 @@
-# Monthly refresh: re-scan the projects that changed, rebuild the index, deploy it to
+# Weekly refresh: re-scan the projects that changed, rebuild the index, deploy it to
 # data.py-code.org and publish the new Parquet tables to Hugging Face.
 #
 # The runner starts with no scan results, so the first step rebuilds them from the Parquet
@@ -8,16 +8,16 @@
 # schedule after 60 days without commits.
 #
 # Secrets: CLOUDFLARE_API_TOKEN (Pages: Edit), CLOUDFLARE_ACCOUNT_ID, HF_TOKEN (write to pypi-data).
-name: monthly refresh
+name: weekly refresh
 
 on:
   schedule:
-    - cron: "0 3 2 * *"  # 03:00 UTC on the 2nd of each month
+    - cron: "0 3 * * 1"  # 03:00 UTC every Monday
   workflow_dispatch:
     inputs:
       changed_days:
         description: "Re-scan projects that changed in this many days"
-        default: "35"
+        default: "8"
       publish:
         description: "Deploy the index and upload to Hugging Face"
         type: boolean
@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 355
     env:
       DAYS: "365"
-      CHANGED_DAYS: ${{ inputs.changed_days || '35' }}
+      CHANGED_DAYS: ${{ inputs.changed_days || '8' }}  # a day of overlap with the previous run
       PUBLISH: ${{ github.event_name == 'schedule' || inputs.publish }}
     steps:
       - uses: actions/checkout@v5
@@ -86,7 +86,10 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           hf upload pypi-data/py-code data/parquet . --repo-type dataset \
-            --commit-message "Monthly refresh $(date -u +%F)"
+            --commit-message "Weekly refresh $(date -u +%F)"
+          # Keep only the latest tables: each upload is about 800 MB, which would add up to
+          # about 40 GB of history a year.
+          python -c "from huggingface_hub import HfApi; HfApi().super_squash_history('pypi-data/py-code', repo_type='dataset', commit_message='Weekly refresh $(date -u +%F)')"
 
       # Commits the new index status to the repository. Besides recording each build, the commit
       # keeps the schedule alive: GitHub turns off scheduled workflows after 60 days with no commits.

@@ -82,7 +82,7 @@ Then ask, for example: "Which popular packages call `requests.Session.merge_envi
 
 Every lookup is two small requests to the static JSON files at `https://data.py-code.org/api`: a
 manifest, then the shard that holds the name. Nothing is sent except the name you look up. The
-index is rebuilt monthly. Set `PY_CODE_API` to read a copy hosted elsewhere.
+index is rebuilt weekly. Set `PY_CODE_API` to read a copy hosted elsewhere.
 
 What it misses: older releases, dynamic imports (`importlib.import_module`, `getattr`), names
 passed through variables, and files that do not parse as current Python. For bulk queries, the

@@ -50,9 +50,11 @@ files are skipped, so a refresh uploads only what changed):
 scanner/deploy_data.sh
 ```
 
-Monthly refresh: `scanner/build.sh refresh` lists the projects that changed in the last 31 days,
-re-scans them, and rebuilds the index. Projects whose latest release is older than the window
-(`DAYS`, default 365) are left out of the index.
+Weekly refresh: `scanner/build.sh refresh` lists the projects that changed in the last
+`CHANGED_DAYS` days, re-scans them, and rebuilds the index. Projects whose latest release is older
+than the window (`DAYS`, default 365) are left out, unless they are among the 60,000 most
+downloaded. `.github/workflows/refresh.yml` runs it every Monday with `CHANGED_DAYS=8`, deploys
+the index and uploads the Parquet tables to Hugging Face.
 
 Export the scan results as Parquet tables for bulk download and SQL (`data/parquet/`, about
 790 MB with zstd):

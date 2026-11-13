@@ -2,7 +2,7 @@
 # Build the py-code.org index from nothing. Every step can be rerun; finished work is skipped.
 #
 #   scanner/build.sh            full build: list, downloads, scan, index, stats
-#   scanner/build.sh refresh    monthly: re-scan only projects that changed in the last CHANGED_DAYS (31)
+#   scanner/build.sh refresh    weekly: re-scan only projects that changed in the last CHANGED_DAYS (31)
 #
 # Needs Python 3.11+ with the packages in requirements.txt, about 10 GB free disk,
 # and a few hours. Logs go to data/build-<step>.log.
