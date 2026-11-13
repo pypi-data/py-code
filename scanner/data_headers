@@ -1,0 +1,5 @@
+# Copied to dist/_headers by build.sh. The site at py-code.org reads this data cross-origin.
+/*
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
+  X-Robots-Tag: noindex
