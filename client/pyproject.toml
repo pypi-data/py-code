@@ -29,6 +29,7 @@ Dataset = "https://huggingface.co/datasets/pypi-data/py-code"
 
 [project.scripts]
 py-code = "py_code_org.cli:main"
+py-code-org = "py_code_org.cli:main"  # so `uvx py-code-org ...` works
 
 [tool.hatch.version]
 path = "src/py_code_org/__init__.py"
