@@ -14,5 +14,5 @@ PROJECT=py-code-data
 [ -s dist/api/status.json ] || { echo "dist/api is empty; run scanner/build.sh first" >&2; exit 1; }
 npx --yes wrangler@4 whoami | grep -q "$CLOUDFLARE_ACCOUNT_ID" || { echo "wrangler is not logged into account $CLOUDFLARE_ACCOUNT_ID" >&2; exit 1; }
 npx --yes wrangler@4 pages project list | grep -q "│ $PROJECT " ||
-  npx --yes wrangler@4 pages project create "$PROJECT" --production-branch=main
+  npx --yes wrangler@4 pages project create "$PROJECT" --production-branch=main --force  # --force: classic Pages, not Workers
 npx --yes wrangler@4 pages deploy dist --project-name="$PROJECT" --branch=main --commit-dirty=true
