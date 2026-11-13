@@ -2,8 +2,8 @@
 
 Find which PyPI packages use a module, function or class, from the command line or from an AI
 coding tool. It reads the index behind [py-code.org](https://py-code.org), which covers the latest
-release of 335,146 PyPI projects released in the last year and records every name their code
-imports or reaches by attribute.
+release of more than 335,000 PyPI projects (every project released in the last year, plus the
+most downloaded ones) and records every name their code imports or reaches by attribute.
 
 Use it before you rename or remove something in a library, to see who calls it and where.
 
