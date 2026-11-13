@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "py-code-org"
+dynamic = ["version"]
+description = "Find which PyPI packages use a module, function or class, from the command line or as an MCP server."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
+dependencies = []
+keywords = ["pypi", "dependencies", "reverse dependencies", "who uses", "mcp", "static analysis"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Quality Assurance",
+]
+
+[project.urls]
+Homepage = "https://py-code.org"
+Source = "https://github.com/pypi-data/py-code"
+Issues = "https://github.com/pypi-data/py-code/issues"
+Dataset = "https://huggingface.co/datasets/pypi-data/py-code"
+
+[project.scripts]
+py-code = "py_code_org.cli:main"
+
+[tool.hatch.version]
+path = "src/py_code_org/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/py_code_org"]

@@ -10,6 +10,19 @@ data from `https://data.py-code.org/api/`.
 From 2023 to 2026 this domain hosted Tom Forbes' PyPI Data project. This is a new, independent
 project and does not reuse its code or data.
 
+## Command-line tool and MCP server
+
+`client/` holds the `py-code-org` package: a command-line tool and an MCP server for AI coding
+tools that read the same JSON as the site. It has no dependencies.
+
+```sh
+uvx py-code-org who-uses requests.Session
+uvx py-code-org project fastapi
+claude mcp add py-code -- uvx py-code-org mcp
+```
+
+See `client/README.md`. Pushing a tag `cli-v<version>` publishes it to PyPI.
+
 ## Rebuild the index
 
 Requirements: Python 3.11 or newer, about 10 GB of free disk, and an internet connection.
@@ -93,6 +106,7 @@ hours: 5,157 had no release in the window and 3,693 failed. After both runs:
 ## Layout
 
 ```
+client/             the py-code-org command-line tool and MCP server (published to PyPI)
 scanner/            the pipeline above
 scanner/removed.txt projects left out at their authors' request (skipped by scan.py and build_index.py)
 scanner/history/    one-off scripts from the first run, kept for the build-log articles
