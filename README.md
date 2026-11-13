@@ -41,6 +41,13 @@ Monthly refresh: `scanner/build.sh refresh` lists the projects that changed in t
 re-scans them, and rebuilds the index. Projects whose latest release is older than the window
 (`DAYS`, default 365) are left out of the index.
 
+Export the scan results as Parquet tables for bulk download and SQL (`dist/parquet/`, about
+790 MB with zstd):
+
+```sh
+python3 scanner/export_parquet.py data/projects dist/parquet --downloads data/downloads.tsv --since 2025-11-13
+```
+
 ### How each step works
 
 1. **Project list.** The Simple API lists every project with the serial number of its newest
