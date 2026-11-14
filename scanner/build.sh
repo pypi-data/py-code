@@ -16,7 +16,9 @@ step() { echo "$(date -u +%FT%TZ) $*" | tee -a data/build.log; }
 
 if [ "${1:-}" = "refresh" ]; then
   step "list projects changed in the last ${CHANGED_DAYS:-31} days"
-  $PY scanner/project_list.py data/changed.tsv --days "${CHANGED_DAYS:-31}" 2> data/build-list.log
+  # Also deletes the results of projects that were removed from PyPI.
+  $PY scanner/project_list.py data/changed.tsv --days "${CHANGED_DAYS:-31}" --prune data/projects 2> data/build-list.log
+  step "list: $(tail -1 data/build-list.log)"
   step "re-scan them"
   # SCAN_TIMEOUT (e.g. 4h) stops the scan early so the rest of the build still runs; the
   # projects it did not reach keep their previous result.
