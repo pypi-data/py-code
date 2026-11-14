@@ -32,7 +32,7 @@ import requests
 UA = "py-code.org-scanner/0.1 (preview; latest-release import index)"
 MAX_TAR_BYTES = 200 * 1024 * 1024
 MAX_PY_FILE = 5 * 1024 * 1024
-WORKERS = 8
+WORKERS = int(os.environ.get("SCAN_WORKERS", "8"))  # parallel downloads
 MAX_DEPTH = 4  # attribute levels followed after the imported name
 
 local = threading.local()
@@ -208,7 +208,9 @@ def own_top_levels(paths):
     return tops
 
 
-def scan_project(name):
+def scan_project(name, known=None):
+    """Scan the latest release of `name`. If `known` is (version, file) and PyPI's latest release
+    still has that file, return {"unchanged": True} without downloading it."""
     r = get(f"https://pypi.org/pypi/{name}/json")
     if r.status_code != 200:
         return {"name": name, "error": f"json {r.status_code}"}
@@ -221,6 +223,8 @@ def scan_project(name):
     if not f:
         return {"name": info["name"], "version": info["version"], "error": "no usable file"}
     fname, url, size = f["filename"], f["url"], f["size"]
+    if known and known == (info["version"], fname):
+        return {"unchanged": True}
     is_sdist = not fname.endswith(".whl")
     members = {}  # path -> bytes
     fetched = 0
@@ -299,6 +303,8 @@ def main():
     ap.add_argument("--limit", type=int)
     ap.add_argument("--since", default=SINCE)
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--changed", action="store_true",
+                    help="re-check every listed project, but download only those whose latest file changed")
     ap.add_argument("--rescan-skipped", action="store_true")
     a = ap.parse_args()
     SINCE = a.since
@@ -323,26 +329,37 @@ def main():
             return False
         return "skipped" not in d and "error" not in d
 
-    todo = names if a.force else [n for n in names if not usable(n)]
+    def known(n):
+        """(version, file) of a stored result, for --changed."""
+        try:
+            d = json.loads((out / f"{n}.json").read_text())
+        except (OSError, ValueError):
+            return None
+        return None if "error" in d or "skipped" in d else (d.get("version"), d.get("file"))
+
+    todo = names if a.force or a.changed else [n for n in names if not usable(n)]
     print(f"{len(names)} projects, {len(todo)} to scan", flush=True)
-    t0, done, errs, skipped = time.time(), 0, 0, 0
+    t0, done, errs, skipped, unchanged = time.time(), 0, 0, 0, 0
     with ThreadPoolExecutor(WORKERS) as ex:
-        futs = {ex.submit(scan_project, n): n for n in todo}
+        futs = {ex.submit(scan_project, n, known(n) if a.changed else None): n for n in todo}
         for fu in as_completed(futs):
             n = futs[fu]
             try:
                 res = fu.result()
             except Exception as e:  # keep going; record the failure
                 res = {"name": n, "error": repr(e)[:300]}
+            done += 1
+            if "unchanged" in res:
+                unchanged += 1
+                continue
             if "error" in res:
                 errs += 1
             elif "skipped" in res:
                 skipped += 1
             (out / f"{n}.json").write_text(json.dumps(res))
-            done += 1
             if done % 100 == 0:
                 print(f"{done}/{len(todo)} in {time.time()-t0:.0f}s, errors {errs}", flush=True)
-    print(f"done {done} in {time.time()-t0:.0f}s, errors {errs}, skipped {skipped}", flush=True)
+    print(f"done {done} in {time.time()-t0:.0f}s, errors {errs}, skipped {skipped}, unchanged {unchanged}", flush=True)
 
 
 if __name__ == "__main__":

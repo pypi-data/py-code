@@ -16,8 +16,8 @@ on:
   workflow_dispatch:
     inputs:
       changed_days:
-        description: "Re-scan projects that changed in this many days"
-        default: "8"
+        description: "Re-scan projects that changed in this many days (empty: since the last build, plus a day)"
+        default: ""
       publish:
         description: "Deploy the index and upload to Hugging Face"
         type: boolean
@@ -36,7 +36,8 @@ jobs:
     timeout-minutes: 355
     env:
       DAYS: "365"
-      CHANGED_DAYS: ${{ inputs.changed_days || '8' }}  # a day of overlap with the previous run
+      SCAN_WORKERS: "16"
+      SCAN_TIMEOUT: "4h"  # the job limit is 6 hours; leave time to build, deploy and upload
       PUBLISH: ${{ github.event_name == 'schedule' || inputs.publish }}
     steps:
       - uses: actions/checkout@v5
@@ -65,7 +66,16 @@ jobs:
           df -h /
 
       - name: Re-scan changed projects and rebuild the index
-        run: scanner/build.sh refresh
+        run: |
+          # Without an input, cover every day since the last build in index-status.json, plus a
+          # day of overlap, so a failed or skipped week is caught up by the next run.
+          days="${{ inputs.changed_days }}"
+          if [ -z "$days" ]; then
+            built=$(python -c "import json; print(json.load(open('index-status.json'))['built'])")
+            days=$(( ( $(date -u +%s) - $(date -u -d "$built" +%s) ) / 86400 + 2 ))
+          fi
+          echo "re-scanning projects changed in the last $days days"
+          CHANGED_DAYS=$days scanner/build.sh refresh
 
       - name: Deploy data.py-code.org
         if: env.PUBLISH == 'true'

@@ -18,7 +18,11 @@ if [ "${1:-}" = "refresh" ]; then
   step "list projects changed in the last ${CHANGED_DAYS:-31} days"
   $PY scanner/project_list.py data/changed.tsv --days "${CHANGED_DAYS:-31}" 2> data/build-list.log
   step "re-scan them"
-  $PY scanner/scan.py data/changed.tsv data/projects --since "$SINCE" --force > data/build-scan.log 2>&1
+  # SCAN_TIMEOUT (e.g. 4h) stops the scan early so the rest of the build still runs; the
+  # projects it did not reach keep their previous result.
+  rc=0; timeout "${SCAN_TIMEOUT:-0}" $PY scanner/scan.py data/changed.tsv data/projects --since "$SINCE" --changed > data/build-scan.log 2>&1 || rc=$?
+  [ "$rc" = 0 ] || [ "$rc" = 124 ] || exit "$rc"
+  [ "$rc" = 0 ] || echo "scan stopped after ${SCAN_TIMEOUT} at $(tail -1 data/build-scan.log)" >> data/build-scan.log
 else
   [ -s data/candidates.tsv ] || { step "list projects changed since $SINCE"; $PY scanner/project_list.py data/candidates.tsv --days "$DAYS" 2> data/build-list.log; }
   step "scan $(wc -l < data/candidates.tsv) candidates (resumes if interrupted)"
